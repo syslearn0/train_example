@@ -53,7 +53,15 @@ def collate_fn(batch):
     )
     mask = (input_ids != PAD_ID)
     labels = torch.tensor(labels, dtype=torch.long)
-    return {"input_ids":input_ids, "mask":mask, "label":labels}
+
+    # soft label
+    SIGMA = 0.7
+    idx = torch.arange(5).float()
+    d = (idx.view(-1, 1) - idx.view(1, -1)) ** 2 
+    SOFT_TABLE = torch.exp(-d/(2*SIGMA**2))
+    SOFT_TABLE = SOFT_TABLE/SOFT_TABLE.sum(dim=1, keepdim=True)
+
+    return {"input_ids":input_ids, "mask":mask, "label":labels, "soft_label":SOFT_TABLE[labels]}
 
 # loaderの追加
 def make_loader(split, batch_size=64, shuffle=False, limit=None):
