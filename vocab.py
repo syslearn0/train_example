@@ -1,6 +1,10 @@
 import json
 from collections import Counter
 from datasets import load_dataset
+from pathlib import Path
+
+BASE = Path(__file__).resolve().parent
+VOCAB_JSON_PATH = BASE / "vocab.json"
 
 dataset = load_dataset("SetFit/amazon_reviews_multi_ja")
 
@@ -25,7 +29,7 @@ char2id = {}
 for idx, char in enumerate(vocab_list):
     char2id[char] = idx
 
-with open("vocab.json", "w", encoding="utf-8") as f:
+with open("VOCAB_JSON_PATH", "w", encoding="utf-8") as f:
     json.dump(char2id, f, ensure_ascii=False, indent=2)
 
 print("jsonに保存しました")

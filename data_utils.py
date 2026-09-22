@@ -3,7 +3,6 @@ from torch.utils.data import DataLoader
 import subprocess
 import sys
 import json
-import os
 import torch
 from pathlib import Path
 
@@ -15,12 +14,14 @@ BASE = Path(__file__).resolve().parent
 VOCAB_JSON_PATH = BASE / "vocab.json"
 VOCAB_SCRIPT_PATH = BASE / "vocab.py"
 
-if not os.path.exists(VOCAB_JSON_PATH):
+if not VOCAB_JSON_PATH.exists():
     print("jsonが存在しないため作成します")
     subprocess.run([sys.executable, str(VOCAB_SCRIPT_PATH)], check=True)
 
 with open(VOCAB_JSON_PATH, "r", encoding="utf-8") as f:
     char2id = json.load(f)
+
+VOCAB_SIZE = len(char2id)
 
 MAX_LEN = 256
 
@@ -55,9 +56,15 @@ def collate_fn(batch):
     return {"input_ids":input_ids, "mask":mask, "label":labels}
 
 # loaderの追加
-train_loader = DataLoader(dataset["train"], batch_size=64, shuffle=True, collate_fn=collate_fn)
-val_loader = DataLoader(dataset["validation"], batch_size=64, shuffle=False, collate_fn=collate_fn)
-test_loader = DataLoader(dataset["test"], batch_size=64, shuffle=False, collate_fn=collate_fn)
+def make_loader(split, batch_size=64, shuffle=False, limit=None):
+    ds = dataset[split]
+    if limit is not None:
+        ds = ds.shuffle(seed=42).select(range(limit))
+    return DataLoader(ds, batch_size=batch_size, shuffle=shuffle, collate_fn=collate_fn)
+
+train_loader = make_loader("train", shuffle=True)
+val_loader = make_loader("validation")
+test_loader = make_loader("test")
 
 if __name__ == "__main__":
     batch = next(iter(train_loader))
