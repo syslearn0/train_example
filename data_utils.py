@@ -6,6 +6,10 @@ import json
 import torch
 from pathlib import Path
 
+MAX_LEN = 256
+SIGMA = 0.7
+PAD_ID = 0
+
 # Parquet形式で直接配信されている日本語Amazonレビューデータを読み込む
 dataset = load_dataset("SetFit/amazon_reviews_multi_ja")
 
@@ -23,8 +27,6 @@ with open(VOCAB_JSON_PATH, "r", encoding="utf-8") as f:
 
 VOCAB_SIZE = len(char2id)
 
-MAX_LEN = 256
-
 def tokenize(data):
     tokenized_data = []
     for sentences in data:
@@ -39,7 +41,12 @@ def tokenize(data):
         tokenized_data.append(id_list)
     return tokenized_data
 
-PAD_ID = 0
+
+# soft label
+idx = torch.arange(5).float()
+d = (idx.view(-1, 1) - idx.view(1, -1)) ** 2 
+SOFT_TABLE = torch.exp(-d/(2*SIGMA**2))
+SOFT_TABLE = SOFT_TABLE/SOFT_TABLE.sum(dim=1, keepdim=True)
 
 def collate_fn(batch):
     texts = [i["text"] for i in batch]
@@ -53,13 +60,6 @@ def collate_fn(batch):
     )
     mask = (input_ids != PAD_ID)
     labels = torch.tensor(labels, dtype=torch.long)
-
-    # soft label
-    SIGMA = 0.7
-    idx = torch.arange(5).float()
-    d = (idx.view(-1, 1) - idx.view(1, -1)) ** 2 
-    SOFT_TABLE = torch.exp(-d/(2*SIGMA**2))
-    SOFT_TABLE = SOFT_TABLE/SOFT_TABLE.sum(dim=1, keepdim=True)
 
     return {"input_ids":input_ids, "mask":mask, "label":labels, "soft_label":SOFT_TABLE[labels]}
 
